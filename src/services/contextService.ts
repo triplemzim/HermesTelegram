@@ -8,12 +8,13 @@ export async function addMessage(chatId: number, role: 'user' | 'assistant', con
   );
 }
 
-export async function getHistory(chatId: number, limit: number = 10) {
+export async function getHistory(chatId: number, limit: number = 20) {
   const db = await getDb();
-  return db.all(
+  const messages = await db.all(
     'SELECT role, content FROM messages WHERE chat_id = ? ORDER BY timestamp DESC LIMIT ?',
     [chatId, limit]
   );
+  return messages.reverse(); // Ensure chronological order (oldest to newest)
 }
 
 export async function clearHistory(chatId: number) {

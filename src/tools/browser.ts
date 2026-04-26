@@ -22,12 +22,17 @@ export async function closeBrowser() {
 export async function search(query: string): Promise<string[]> {
   const b = await getBrowser();
   const page = await b.newPage();
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  
   try {
-    const searchUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}&t=h_&ia=web`;
     await page.goto(searchUrl, { waitUntil: 'networkidle2' });
     
+    // Wait for results to load
+    await page.waitForSelector('a[data-testid="result-title-a"]', { timeout: 5000 }).catch(() => {});
+
     const links = await page.evaluate(() => {
-      const results = Array.from(document.querySelectorAll('.result__a'));
+      const results = Array.from(document.querySelectorAll('a[data-testid="result-title-a"]'));
       return results.map(res => (res as HTMLAnchorElement).href).slice(0, 5);
     });
     
@@ -43,8 +48,10 @@ export async function search(query: string): Promise<string[]> {
 export async function extractText(url: string): Promise<string> {
   const b = await getBrowser();
   const page = await b.newPage();
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  
   try {
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     const text = await page.evaluate(() => document.body.innerText);
     return text;
   } catch (error) {
