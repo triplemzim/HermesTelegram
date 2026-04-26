@@ -9,33 +9,36 @@ const MODEL = 'gemma4:e4b'; // Quantized model for Raspberry Pi 5
 const SYSTEM_PROMPT = `You are Hermes, a highly intelligent and proactive personal assistant.
 Your goal is to help the user manage their life, notes, and reminders.
 
-CAPABILITIES:
-1. Save Notes: Use [SAVE_NOTE: content]
-2. Set Reminders: Use [SET_REMINDER: content, ISO_TIMESTAMP]
-3. Search Web: Use [SEARCH: query] if you need real-time information (like prices, news, or weather).
+### MANDATORY COMMAND FORMAT
+To perform any action in the database, you MUST include the corresponding command tag in your response. If you don't include the tag, the action will NOT happen.
 
-GUIDELINES:
-- Be concise but friendly.
-- If the user says "Remind me tomorrow", you MUST ask "What time tomorrow?" and "What should I remind you about?" if not specified.
-- Only use the tags when all information is gathered.
+1. SAVE NOTE: [SAVE_NOTE: content]
+2. DELETE NOTE: [DELETE_NOTE: note_id] (Get ID from CURRENT CONTEXT)
+3. SET REMINDER: [SET_REMINDER: content, ISO_TIMESTAMP]
+4. SEARCH WEB: [SEARCH: query]
 
-EXAMPLES:
-User: Take a note.
-Assistant: Sure! What would you like the note to say?
-User: Buy milk.
-Assistant: I've saved that note for you. [SAVE_NOTE: Buy milk]
+### CRITICAL RULES:
+- ALWAYS prioritize information in "CURRENT CONTEXT". If a note is listed there, it exists.
+- To delete a note, look for its ID in the context (e.g., "[ID: 5]") and use [DELETE_NOTE: 5].
+- DO NOT just tell the user you deleted/saved something. You MUST include the tag.
+- If you don't see the note in the context, tell the user you can't find it.
+- Be concise.
 
-User: Remind me about my dentist appointment.
-Assistant: Of course! What date and time is your appointment?
-User: Tomorrow at 4pm.
-Assistant: Noted. I'll remind you tomorrow at 4:00 PM. [SET_REMINDER: Dentist appointment, 2026-04-28T16:00:00Z]
+### EXAMPLES:
+User: Delete my "buy milk" note.
+Context: 1. [ID: 4] - buy milk
+Assistant: I've deleted that note for you. [DELETE_NOTE: 4]
 
-User: What's the price of iPhone 15 in Singapore?
-Assistant: Let me check the latest prices for you. [SEARCH: iPhone 15 price Singapore]
+User: Remind me to call Mom tomorrow at 10am.
+Assistant: Sure, I'll remind you tomorrow at 10:00 AM. [SET_REMINDER: Call Mom, 2026-04-28T10:00:00Z]
 `;
 
 export async function generateResponse(prompt: string, history: { role: string, content: string }[]) {
   const fullPrompt = `${SYSTEM_PROMPT}\n\n` + history.map(h => `${h.role}: ${h.content}`).join('\n') + `\nuser: ${prompt}\nassistant: `;
+
+  console.log('--- SENDING PROMPT TO AI (NON-STREAM) ---');
+  console.log(fullPrompt);
+  console.log('--- END PROMPT ---');
 
   try {
     const response = await axios.post(`${OLLAMA_HOST}/api/generate`, {
@@ -60,6 +63,10 @@ export async function* generateResponseStream(prompt: string, history: { role: s
   const now = new Date().toLocaleString();
   const fullPrompt = `${SYSTEM_PROMPT}\n\nCURRENT TIME: ${now}${contextSection}\n\n` + history.map(h => `${h.role}: ${h.content}`).join('\n') + `\nuser: ${prompt}\nassistant: `;
 
+  console.log('--- SENDING PROMPT TO AI ---');
+  console.log(fullPrompt);
+  console.log('--- END PROMPT ---');
+
   try {
     const response = await axios.post(`${OLLAMA_HOST}/api/generate`, {
       model: MODEL,
@@ -71,10 +78,10 @@ export async function* generateResponseStream(prompt: string, history: { role: s
     for await (const chunk of response.data) {
       buffer += chunk.toString();
       const lines = buffer.split('\n');
-      
+
       // Keep the last partial line in the buffer
       buffer = lines.pop() || '';
-      
+
       for (const line of lines) {
         if (!line.trim()) continue;
         try {

@@ -110,7 +110,7 @@ bot.onText(/\/notes/, async (msg) => {
   if (notes.length === 0) {
     bot.sendMessage(chatId, 'You have no saved notes.');
   } else {
-    const notesList = notes.map((n, i) => `${i + 1}. ${n.content} (${new Date(n.timestamp).toLocaleDateString()})`).join('\n');
+    const notesList = notes.map((n) => `[ID: ${n.id}] ${n.content} (${new Date(n.timestamp).toLocaleDateString()})`).join('\n');
     bot.sendMessage(chatId, `Your notes:\n\n${notesList}`);
   }
 });
@@ -179,10 +179,11 @@ bot.on('message', async (msg) => {
   let context = '';
   const lowercaseText = text.toLowerCase();
   
-  if (lowercaseText.includes('note') || lowercaseText.includes('saved')) {
+  const contextKeywords = ['note', 'save', 'remind', 'schedule', 'appointment', 'delete', 'remove', 'clear', 'forget', 'kill', 'drop', 'list', 'show', 'what'];
+  if (contextKeywords.some(k => lowercaseText.includes(k))) {
     const notes = await notesService.getNotes(chatId);
     if (notes.length > 0) {
-      context += `User's saved notes:\n` + notes.map((n, i) => `${i + 1}. ${n.content}`).join('\n') + '\n';
+      context += `User's saved notes (IMPORTANT: Use the ID for deletion):\n` + notes.map((n, i) => `${i + 1}. [ID: ${n.id}] - ${n.content}`).join('\n') + '\n';
     }
   }
   
@@ -200,6 +201,10 @@ bot.on('message', async (msg) => {
         const reminders = await reminderService.getReminders(chatId);
         context = `Notes: ${notes.length}, Reminders: ${reminders.length}. Fetching details if needed...`;
     }
+  }
+
+  if (context) {
+    console.log(`AI Context: \n${context}`);
   }
 
   // Send initial message
@@ -223,27 +228,45 @@ bot.on('message', async (msg) => {
     }
 
     // Final update with tags stripped for the user
-    const cleanResponse = fullResponse.replace(/\[(SAVE_NOTE|SET_REMINDER|SEARCH):.+?\]/g, '').trim();
+    const cleanResponse = fullResponse.replace(/\[(SAVE_NOTE|DELETE_NOTE|SET_REMINDER|SEARCH):.+?\]/g, '').trim();
     await bot.editMessageText(cleanResponse || fullResponse, {
       chat_id: chatId,
       message_id: sentMsg.message_id
     });
 
-    console.log(`AI Response: ${fullResponse}`);
-
+    console.log(`Raw AI Response: ${fullResponse}`);
+    
     // Check for tool tags in the response
-    if (fullResponse.includes('[SAVE_NOTE:')) {
-      const match = fullResponse.match(/\[SAVE_NOTE:\s*(.+?)\]/);
+    if (fullResponse.toUpperCase().includes('[SAVE_NOTE:')) {
+      const match = fullResponse.match(/\[SAVE_NOTE:\s*(.+?)\]/i);
       if (match?.[1]) {
+        console.log(`Detected SAVE_NOTE: ${match[1]}`);
         await notesService.addNote(chatId, match[1]);
         await bot.sendMessage(chatId, '✅ Note saved to database.');
       }
-    } else if (fullResponse.includes('[SET_REMINDER:')) {
-      const match = fullResponse.match(/\[SET_REMINDER:\s*(.+?),\s*(.+?)\]/);
+    } 
+    
+    if (fullResponse.toUpperCase().includes('[DELETE_NOTE:')) {
+      const match = fullResponse.match(/\[DELETE_NOTE:\s*(\d+)\]/i);
+      if (match?.[1]) {
+        const noteId = parseInt(match[1]);
+        console.log(`[AI Command] Detected DELETE_NOTE for ID: ${noteId}`);
+        const success = await notesService.deleteNote(chatId, noteId);
+        if (success) {
+          await bot.sendMessage(chatId, `✅ Note with ID ${noteId} deleted.`);
+        } else {
+          await bot.sendMessage(chatId, `❌ Could not delete note ${noteId}. It might already be gone.`);
+        }
+      }
+    } else if (fullResponse.toLowerCase().includes('deleted') || fullResponse.toLowerCase().includes('removed')) {
+      console.log(`[AI Warning] AI claimed to delete/remove something but DID NOT use the [DELETE_NOTE] tag.`);
+    }
+    
+    if (fullResponse.toUpperCase().includes('[SET_REMINDER:')) {
+      const match = fullResponse.match(/\[SET_REMINDER:\s*(.+?),\s*(.+?)\]/i);
       if (match?.[1] && match?.[2]) {
-        // Here we could add logic to parse the time, but for now we'll just save it
-        // Or we can rely on a simpler format from the AI
-        await reminderService.addReminder(chatId, match[1], new Date().toISOString()); 
+        console.log(`Detected SET_REMINDER: ${match[1]} at ${match[2]}`);
+        await reminderService.addReminder(chatId, match[1], match[2]); 
         await bot.sendMessage(chatId, '✅ Reminder set.');
       }
     }
