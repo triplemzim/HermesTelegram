@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
-const MODEL = 'gemma4:e4b'; // Quantized model for Raspberry Pi 5
+const MODEL = 'gemma4:e2b'; // Quantized model for Raspberry Pi 5
 
 const SYSTEM_PROMPT = `You are Hermes, a highly intelligent and proactive personal assistant.
 Your goal is to help the user manage their life, notes, and reminders.
