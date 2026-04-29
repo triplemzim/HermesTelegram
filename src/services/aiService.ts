@@ -6,7 +6,6 @@ dotenv.config();
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
 const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama'; // 'ollama' or 'gemini'
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'flash';
 const MODEL = 'gemma4:e2b'; // Quantized model for Raspberry Pi 5
 
 const SYSTEM_PROMPT = `You are Hermes, a highly intelligent and proactive personal assistant.
@@ -38,7 +37,7 @@ Assistant: Sure, I'll remind you tomorrow at 10:00 AM. [SET_REMINDER: Call Mom, 
 
 async function runGeminiCli(prompt: string, sessionId?: string | null): Promise<{ content: string, sessionId: string }> {
   return new Promise((resolve) => {
-    const args = ['-m', GEMINI_MODEL, '-o', 'stream-json'];
+    const args = ['-o', 'stream-json'];
     if (sessionId) {
       args.push('-r', sessionId);
     }
@@ -141,12 +140,12 @@ export async function* generateResponseStream(
   console.log('--- END PROMPT ---');
 
   if (LLM_PROVIDER === 'gemini') {
-    const args = ['-m', GEMINI_MODEL, '-o', 'stream-json'];
+    const args = ['-o', 'stream-json'];
     if (options?.sessionId) {
       console.log(`[Gemini CLI] Resuming session: ${options.sessionId}`);
       args.push('-r', options.sessionId);
     } else {
-      console.log(`[Gemini CLI] Starting new session with model: ${GEMINI_MODEL}`);
+      console.log(`[Gemini CLI] Starting new session`);
     }
 
     const child = spawn('gemini', args, { shell: true });

@@ -22,7 +22,7 @@ if (!token) {
 }
 
 // Initialize database
-initDatabase().catch(console.error);
+await initDatabase();
 
 // Initialize scheduler
 initScheduler();
