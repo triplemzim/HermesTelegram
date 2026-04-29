@@ -27,7 +27,14 @@ initDatabase().catch(console.error);
 // Initialize scheduler
 initScheduler();
 
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(token, { 
+  polling: true,
+  request: {
+    agentOptions: {
+      family: 4
+    }
+  }
+} as any);
 
 // Set bot commands for the context menu
 bot.setMyCommands([
