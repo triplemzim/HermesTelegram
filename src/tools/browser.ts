@@ -4,10 +4,16 @@ let browser: Browser | null = null;
 
 export async function getBrowser() {
   if (!browser) {
-    browser = await puppeteer.launch({
+    const launchOptions: any = {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    };
+
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+
+    browser = await puppeteer.launch(launchOptions);
   }
   return browser;
 }

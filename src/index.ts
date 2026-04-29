@@ -85,7 +85,11 @@ bot.onText(/\/note(?:\s+(.+))?/, async (msg, match) => {
     }
     
     const cleanResponse = fullResponse.replace(/\[(SAVE_NOTE|SET_REMINDER):.+?\]/g, '').trim();
-    await bot.editMessageText(cleanResponse || fullResponse, {
+    
+    // Fallback if response is empty to avoid Telegram 400 error
+    const finalMessage = cleanResponse || fullResponse || "Done.";
+    
+    await bot.editMessageText(finalMessage, {
       chat_id: chatId,
       message_id: sentMsg.message_id
     });
@@ -229,7 +233,11 @@ bot.on('message', async (msg) => {
 
     // Final update with tags stripped for the user
     const cleanResponse = fullResponse.replace(/\[(SAVE_NOTE|DELETE_NOTE|SET_REMINDER|SEARCH):.+?\]/g, '').trim();
-    await bot.editMessageText(cleanResponse || fullResponse, {
+    
+    // Fallback if response is empty
+    const finalMessage = cleanResponse || fullResponse || "I processed your request.";
+    
+    await bot.editMessageText(finalMessage, {
       chat_id: chatId,
       message_id: sentMsg.message_id
     });
