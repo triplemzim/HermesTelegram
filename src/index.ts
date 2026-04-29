@@ -91,7 +91,15 @@ bot.onText(/\/note(?:\s+(.+))?/, async (msg, match) => {
     const history = await contextService.getHistory(chatId);
     let fullResponse = '';
     
-    for await (const chunk of aiService.generateResponseStream(prompt, history)) {
+    const sessionId = await contextService.getSessionId(chatId);
+    for await (const chunk of aiService.generateResponseStream(prompt, history, undefined, {
+      sessionId,
+      onSessionId: (newId) => {
+        if (newId !== sessionId) {
+          contextService.setSessionId(chatId, newId).catch(console.error);
+        }
+      }
+    })) {
       fullResponse += chunk;
     }
     
@@ -229,8 +237,20 @@ bot.on('message', async (msg) => {
   let lastUpdate = Date.now();
 
   try {
-    for await (const chunk of aiService.generateResponseStream(text, history, context)) {
+    // Get existing AI session if any
+    const sessionId = await contextService.getSessionId(chatId);
+    
+    console.log('[Bot] Starting AI response stream...');
+    for await (const chunk of aiService.generateResponseStream(text, history, context, {
+      sessionId,
+      onSessionId: (newId) => {
+        if (newId !== sessionId) {
+          contextService.setSessionId(chatId, newId).catch(console.error);
+        }
+      }
+    })) {
       fullResponse += chunk;
+      console.log(`[Bot] Received chunk: ${chunk.substring(0, 20)}...`);
       
       // Update message every 1 second to avoid Telegram rate limits
       if (Date.now() - lastUpdate > 1000) {

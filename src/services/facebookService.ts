@@ -43,10 +43,11 @@ export async function runTrendAnalysisAndPost(topic: string = 'Technology') {
 
   // 3. Generate post content
   const prompt = `Based on the following news/trends: "${extractedText.substring(0, 1000)}", generate an engaging and professional Facebook post for a page about ${topic}. Keep it concise.`;
-  const postContent = await aiService.generateResponse(prompt, []);
+  const result = await aiService.generateResponse(prompt, []);
+  const postContent = result.content;
 
   // 4. Publish
-  if (postContent && postContent !== 'Error generating response.') {
+  if (postContent && postContent !== 'Error generating response.' && postContent !== 'Sorry, I am having trouble thinking right now.') {
     await publishPost(postContent);
   }
 }
