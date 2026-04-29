@@ -1,4 +1,8 @@
 import TelegramBot from 'node-telegram-bot-api';
+import dns from 'node:dns';
+
+// Fix for AggregateError/network issues on Raspberry Pi/Node 17+
+dns.setDefaultResultOrder('ipv4first');
 import dotenv from 'dotenv';
 import { initDatabase } from './database/db.js';
 import { initScheduler } from './services/scheduler.js';
